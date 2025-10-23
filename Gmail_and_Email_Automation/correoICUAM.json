@@ -1,0 +1,131 @@
+{
+  "name": "correoICUAM - Respuesta con Asistente y Base de Conocimiento",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      "name": "Recibir Nuevo Correo",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -330,
+        560
+      ],
+      "parameters": {
+        "simple": false,
+        "filters": {
+          "q": "-from:me"
+        },
+        "options": {},
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REEMPLAZAR_CON_ID_CREDENCIAL_GMAIL",
+          "name": "Cuenta de Gmail"
+        }
+      }
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-2345-67890abcdef1",
+      "name": "Generar Borrador con IA",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        0,
+        560
+      ],
+      "parameters": {
+        "resource": "assistant",
+        "assistantId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REEMPLAZAR_CON_ID_ASISTENTE_OPENAI"
+        },
+        "text": "Asunto del correo: {{ $('Recibir Nuevo Correo').item.json.subject }}
+
+Cuerpo del correo:
+{{ $('Recibir Nuevo Correo').item.json.text }}
+
+Por favor, prepara un borrador de respuesta basado en la base de conocimiento adjunta.",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "REEMPLAZAR_CON_ID_CREDENCIAL_OPENAI",
+          "name": "Cuenta de OpenAI"
+        }
+      }
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-3456-7890abcdef12",
+      "name": "Crear Borrador en Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        300,
+        560
+      ],
+      "parameters": {
+        "resource": "draft",
+        "emailType": "html",
+        "message": "={{ $json.output.replace(/\n/g, \"<br />\n\") }}",
+        "options": {
+          "sendTo": "={{ $('Recibir Nuevo Correo').item.json.from.text }}",
+          "threadId": "={{ $('Recibir Nuevo Correo').item.json.threadId }}"
+        },
+        "subject": "=Re: {{ $('Recibir Nuevo Correo').item.json.subject }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REEMPLAZAR_CON_ID_CREDENCIAL_GMAIL",
+          "name": "Cuenta de Gmail"
+        }
+      }
+    },
+    {
+      "id": "d4e5f6a7-b8c9-0123-4567-890abcdef123",
+      "name": "Instrucciones",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -330,
+        300
+      ],
+      "parameters": {
+        "content": "## Automatización de Respuesta de Correo con IA (ICUAM)\n\n**Pasos para configurar:**\n\n1.  **Nodo 'Recibir Nuevo Correo'**: \n    - Reemplaza `REEMPLAZAR_CON_ID_CREDENCIAL_GMAIL` con tus credenciales de Gmail.\n\n2.  **Nodo 'Generar Borrador con IA'**: \n    - Ve a tu cuenta de OpenAI y crea un **Asistente**. \n    - En la configuración del Asistente, activa la opción de **Retrieval** y sube los archivos de tu base de conocimiento.\n    - Pega el **ID del Asistente** en el campo `assistantId`.\n    - Reemplaza `REEMPLAZAR_CON_ID_CREDENCIAL_OPENAI` con tus credenciales de OpenAI.\n    - **IMPORTANTE**: Edita el 'System Prompt' directamente en la configuración de tu Asistente en la plataforma de OpenAI para darle las instrucciones y el tono que debe usar.\n\n3.  **Nodo 'Crear Borrador en Gmail'**: \n    - Asegúrate de que las credenciales de Gmail son las mismas que en el primer nodo.",
+        "width": 600,
+        "height": 250
+      }
+    }
+  ],
+  "connections": {
+    "Recibir Nuevo Correo": {
+      "main": [
+        [
+          {
+            "node": "Generar Borrador con IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Borrador con IA": {
+      "main": [
+        [
+          {
+            "node": "Crear Borrador en Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
